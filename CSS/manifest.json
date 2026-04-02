@@ -1,0 +1,23 @@
+{
+    "name": "Shubao Phone",
+    "short_name": "书包手机",
+    "start_url": "./index.html",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#ffb6c1",
+    "orientation": "portrait",
+    "icons": [
+        {
+            "src": "assets/icons/shubao.jpg",
+            "sizes": "192x192",
+            "type": "image/jpeg",
+            "purpose": "any"
+        },
+        {
+            "src": "assets/icons/shubao.jpg",
+            "sizes": "512x512",
+            "type": "image/jpeg",
+            "purpose": "any"
+        }
+    ]
+}
