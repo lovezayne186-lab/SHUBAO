@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>资产与流水 - FangCun OS</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background-color: #08090B; font-family: -apple-system, BlinkMacSystemFont, sans-serif; color: #E8E8EC; overflow-x: hidden; }
+        .app-container { max-width: 420px; margin: 0 auto; padding-bottom: 30px; }
+        .header { background: #FFF; padding: 50px 20px 20px; text-align: center; border-radius: 0 0 20px 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); }
+        .total-label { font-size: 14px; color: #888; margin-bottom: 5px; }
+        .total-amount { font-size: 36px; font-weight: bold; font-family: "Helvetica Neue", sans-serif; color: #000; letter-spacing: -1px; }
+        .section-title { font-size: 18px; font-weight: 600; margin: 25px 20px 15px; color: #F3F3F7; }
+        .section-sub { font-size: 12px; color: #B3B3BC; margin: -8px 20px 14px; }
+        .card-slider { display: flex; overflow-x: auto; padding: 0 20px 10px; gap: 15px; scroll-snap-type: x mandatory; }
+        .card-slider::-webkit-scrollbar { display: none; }
+        .bank-card { min-width: 280px; height: 166px; border-radius: 18px; padding: 20px; color: #FFF; display: flex; flex-direction: column; justify-content: space-between; scroll-snap-align: center; box-shadow: 0 8px 16px rgba(0,0,0,0.15); position: relative; overflow: hidden; cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease, outline 0.2s ease; }
+        .bank-card::after { content: ''; position: absolute; right: -20px; bottom: -20px; width: 110px; height: 110px; background: rgba(255,255,255,0.1); border-radius: 50%; }
+        .bank-card.active { transform: translateY(-2px); box-shadow: 0 12px 20px rgba(0,0,0,0.18); outline: 2px solid rgba(255,255,255,0.65); }
+        .theme-black { background: linear-gradient(135deg, #2C2C2C, #000000); }
+        .theme-blue { background: linear-gradient(135deg, #1A549C, #09306B); }
+        .theme-gold { background: linear-gradient(135deg, #D4AF37, #997A15); color: #111; }
+        .theme-red { background: linear-gradient(135deg, #C62828, #8E0000); }
+        .card-bank { font-size: 16px; font-weight: 600; display: flex; justify-content: space-between; gap: 12px; }
+        .card-type { font-size: 12px; font-weight: normal; opacity: 0.84; text-align: right; }
+        .card-number { font-size: 20px; letter-spacing: 2px; font-family: monospace; }
+        .card-balance { font-size: 14px; }
+        .card-balance span { font-size: 18px; font-weight: bold; }
+        .tx-list { background: #FFF; border-radius: 16px; margin: 0 20px; padding: 10px 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); }
+        .tx-item { display: flex; justify-content: space-between; align-items: flex-start; padding: 15px 0; border-bottom: 1px solid #F0F0F0; gap: 12px; }
+        .tx-item:last-child { border-bottom: none; }
+        .tx-info { display: flex; align-items: flex-start; gap: 15px; min-width: 0; flex: 1; }
+        .tx-icon { width: 40px; height: 40px; background: #F4F5F7; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; color: #6A6670; flex-shrink: 0; }
+        .tx-title { font-size: 15px; font-weight: 500; color: #333; margin-bottom: 4px; white-space: normal; overflow: visible; text-overflow: clip; max-width: none; line-height: 1.35; word-break: break-word; }
+        .tx-date { font-size: 12px; color: #999; }
+        .tx-right { text-align: right; flex-shrink: 0; min-width: 108px; margin-left: 8px; }
+        .tx-amount { font-size: 16px; font-weight: 600; font-family: "Helvetica Neue", sans-serif; }
+        .tx-income { color: #34C759; }
+        .tx-expense { color: #000; }
+        .tx-status { font-size: 11px; color: #999; margin-top: 4px; }
+        .empty-state { color: #999; text-align: center; padding: 48px 20px; }
+        .back-btn { position: fixed; top: 20px; left: 20px; font-size: 24px; color: #B9B9C2; text-decoration: none; z-index: 10; }
+        .generate-btn {
+            position: fixed; top: 20px; right: 20px; z-index: 10;
+            border: none; background: transparent; color: #111;
+            font-size: 20px; line-height: 1; padding: 6px; cursor: pointer;
+            text-shadow: 0 0 1px rgba(255,255,255,0.35);
+        }
+        .generate-btn:disabled { opacity: 0.45; cursor: default; }
+    </style>
+</head>
+<body>
+    <a href="FangCun.html" class="back-btn">‹</a>
+    <button class="generate-btn" id="generateBtn" type="button" aria-label="生成">✦</button>
+    <div class="app-container">
+        <div class="header">
+            <div class="total-label">总资产 (CNY)</div>
+            <div class="total-amount" id="totalBalance">--</div>
+        </div>
+        <div class="section-title">我的账户</div>
+        <div class="card-slider" id="cardList"></div>
+        <div class="section-title">近期交易</div>
+        <div class="section-sub" id="cardHint">切换银行卡查看对应流水</div>
+        <div class="tx-list" id="txList"></div>
+    </div>
+
+    <script src="../js/secret-center-core.js"></script>
+    <script>
+        let assetsData = null;
+        let selectedCardIndex = 0;
+
+        function asString(value) { return String(value == null ? '' : value).trim(); }
+        function escapeHtml(text) {
+            return asString(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+        function showGenerationFailure(message) {
+            const reason = asString(message) || '本次没有生成出可展示的资产与流水。';
+            if (window.SecretCenterCore && typeof window.SecretCenterCore.showGenerationErrorDialog === 'function') {
+                window.SecretCenterCore.showGenerationErrorDialog(reason, '资产与流水');
+                return;
+            }
+            alert(reason);
+        }
+        function getTxIcon(title) {
+            const text = asString(title);
+            if (text.indexOf('外卖') !== -1 || text.indexOf('餐') !== -1) return '餐';
+            if (text.indexOf('转账') !== -1 || text.indexOf('账户') !== -1) return '转';
+            if (text.indexOf('淘宝') !== -1 || text.indexOf('京东') !== -1 || text.indexOf('购物') !== -1) return '购';
+            if (text.indexOf('工资') !== -1 || text.indexOf('分红') !== -1 || text.indexOf('入账') !== -1 || text.indexOf('回款') !== -1) return '收';
+            if (text.indexOf('医院') !== -1 || text.indexOf('咨询') !== -1) return '医';
+            return '账';
+        }
+        function getCurrentTransactions() {
+            const cards = assetsData && Array.isArray(assetsData.cards) ? assetsData.cards : [];
+            const currentCard = cards[selectedCardIndex] || cards[0] || {};
+            const cardTransactions = Array.isArray(currentCard.transactions) ? currentCard.transactions : [];
+            if (cardTransactions.length) return cardTransactions;
+            return assetsData && Array.isArray(assetsData.transactions) ? assetsData.transactions : [];
+        }
+        function renderCards() {
+            const cards = assetsData && Array.isArray(assetsData.cards) ? assetsData.cards : [];
+            const mount = document.getElementById('cardList');
+            if (!cards.length) {
+                mount.innerHTML = '<div class="empty-state" style="min-width:100%;">暂无账户信息</div>';
+                return;
+            }
+            if (selectedCardIndex >= cards.length) selectedCardIndex = 0;
+            mount.innerHTML = cards.map(function (c, index) {
+                return '<div class="bank-card theme-' + escapeHtml(c.theme || 'black') + (index === selectedCardIndex ? ' active' : '') + '" data-card-index="' + index + '"><div class="card-bank"><span>' + escapeHtml(c.bank) + '</span><span class="card-type">' + escapeHtml(c.type) + '</span></div><div class="card-number">**** **** **** ' + escapeHtml(c.last4) + '</div><div class="card-balance">余额 <span>¥' + escapeHtml(c.balance) + '</span></div></div>';
+            }).join('');
+        }
+        function renderTransactions() {
+            const txList = document.getElementById('txList');
+            const hint = document.getElementById('cardHint');
+            const cards = assetsData && Array.isArray(assetsData.cards) ? assetsData.cards : [];
+            const currentCard = cards[selectedCardIndex] || {};
+            const transactions = getCurrentTransactions();
+            hint.textContent = currentCard.last4 ? ('当前显示尾号 ' + asString(currentCard.last4) + ' 的流水') : '当前显示近期交易';
+            txList.innerHTML = transactions.length ? transactions.map(function (t) {
+                const amountText = asString(t.amount);
+                const isIncome = amountText.indexOf('-') !== 0;
+                const amountClass = isIncome ? 'tx-income' : 'tx-expense';
+                const displayAmount = isIncome ? ('+' + amountText) : amountText;
+                return '<div class="tx-item"><div class="tx-info"><div class="tx-icon">' + escapeHtml(getTxIcon(t.title)) + '</div><div><div class="tx-title">' + escapeHtml(t.title) + '</div><div class="tx-date">' + escapeHtml(t.date) + '</div></div></div><div class="tx-right"><div class="tx-amount ' + amountClass + '">' + escapeHtml(displayAmount) + '</div><div class="tx-status">' + escapeHtml(t.status) + '</div></div></div>';
+            }).join('') : '<div class="empty-state">暂无交易记录</div>';
+        }
+        function renderAssets() {
+            document.getElementById('totalBalance').textContent = '¥' + escapeHtml(assetsData && assetsData.totalBalance || '0.00');
+            renderCards();
+            renderTransactions();
+        }
+        async function loadAssets(force) {
+            const btn = document.getElementById('generateBtn');
+            if (!window.SecretCenterCore || typeof window.SecretCenterCore.generateShadowAssetsContent !== 'function') {
+                showGenerationFailure('核心模块未加载，暂时无法生成。');
+                return;
+            }
+            const roleId = window.SecretCenterCore.getSelectedRoleId();
+            if (!roleId) {
+                showGenerationFailure('请先选择角色，再查看资产与流水。');
+                return;
+            }
+            document.getElementById('totalBalance').textContent = '--';
+            document.getElementById('cardList').innerHTML = '<div class="empty-state" style="min-width:100%;">正在同步账户信息...</div>';
+            document.getElementById('txList').innerHTML = '<div class="empty-state">正在读取交易记录...</div>';
+            try {
+                if (btn) btn.disabled = true;
+                const res = await window.SecretCenterCore.generateShadowAssetsContent({ roleId: roleId, force: force === true });
+                if (res && res.ok && res.data) {
+                    assetsData = res.data;
+                    selectedCardIndex = 0;
+                    renderAssets();
+                    return;
+                }
+                document.getElementById('cardList').innerHTML = '';
+                document.getElementById('txList').innerHTML = '';
+                showGenerationFailure(res && res.error);
+            } catch (error) {
+                document.getElementById('cardList').innerHTML = '';
+                document.getElementById('txList').innerHTML = '';
+                console.error('ShadowAssets generate failed:', error);
+                showGenerationFailure(error && error.message);
+            } finally {
+                if (btn) btn.disabled = false;
+            }
+        }
+        document.getElementById('cardList').addEventListener('click', function (event) {
+            const card = event.target.closest('[data-card-index]');
+            if (!card) return;
+            selectedCardIndex = Number(card.getAttribute('data-card-index')) || 0;
+            renderCards();
+            renderTransactions();
+        });
+        document.getElementById('generateBtn').addEventListener('click', function () {
+            loadAssets(true);
+        });
+        window.onload = function () {
+            loadAssets(false);
+        };
+    </script>
+</body>
+</html>
