@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>仿小红书精美版 UI</title>
+<style>
+    /* 全局重置与基础样式 */
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    body { background-color: #F4F4F4; display: flex; justify-content: center; }
+    
+    /* 模拟手机屏幕 */
+    .app-container {
+        width: 100%;
+        max-width: 414px; /* 模拟 iPhone Max 宽度 */
+        height: 100vh;
+        background-color: #F8F8F8;
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 0 20px rgba(0,0,0,0.1);
+    }
+
+    /* === 顶部导航栏 === */
+    .top-nav {
+        height: 88px; /* 包含状态栏高度 */
+        padding-top: 40px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 30px;
+        background: rgba(248, 248, 248, 0.9);
+        backdrop-filter: blur(10px);
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        z-index: 10;
+    }
+    .top-nav .tab {
+        font-size: 16px;
+        color: #999;
+        font-weight: 500;
+        position: relative;
+        cursor: pointer;
+    }
+    .top-nav .tab.active {
+        color: #333;
+        font-size: 18px;
+        font-weight: 600;
+    }
+    .top-nav .tab.active::after {
+        content: '';
+        position: absolute;
+        bottom: -6px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 20px;
+        height: 3px;
+        background-color: #FF2442; /* 小红书红 */
+        border-radius: 2px;
+    }
+
+    /* === 内容瀑布流区域 === */
+    .feed-scroll {
+        flex: 1;
+        overflow-y: auto;
+        padding: 95px 12px 90px 12px; /* 上下留出导航栏的空间 */
+    }
+    /* 隐藏滚动条让界面更干净 */
+    .feed-scroll::-webkit-scrollbar { display: none; }
+
+    .masonry-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+    }
+
+    /* === 卡片样式 (核心设计) === */
+    .card {
+        background: #fff;
+        border-radius: 16px;
+        overflow: hidden;
+        /* 这里的 height 是实现“4条全露，2条半露”的关键 */
+        /* 假设可用高度约为 600px，设为 280px 保证第三排刚好露出一点点 */
+        height: 280px; 
+        box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+        display: flex;
+        flex-direction: column;
+        position: relative;
+    }
+
+    /* 仿照你例图的封面配色 */
+    .card-cover { flex: 1; display: flex; justify-content: center; align-items: center; font-size: 20px; font-weight: bold; color: #555; position: relative;}
+    .card:nth-child(1) .card-cover { background-color: #E8E4FD; color: #5B4E7A; } /* 浅紫 */
+    .card:nth-child(2) .card-cover { background-color: #6B6B6B; color: #FFF; }    /* 深灰 */
+    .card:nth-child(3) .card-cover { background-color: #FFEFEF; color: #D86B6B; } /* 浅粉 */
+    .card:nth-child(4) .card-cover { background-color: #E6F4EA; color: #538A63; } /* 浅绿 */
+    .card:nth-child(5) .card-cover { background-color: #FFF4E5; color: #A67B40; } /* 浅黄 (半露) */
+    .card:nth-child(6) .card-cover { background-color: #E5F0FF; color: #4A70A6; } /* 浅蓝 (半露) */
+
+    /* 卡片底部的文字信息 */
+    .card-info {
+        padding: 12px;
+        background: #fff;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        color: #333;
+        font-weight: 500;
+    }
+    .card-info i { font-size: 14px; } /* 占位图标 */
+
+    /* === 底部导航栏 === */
+    .bottom-nav {
+        height: 70px;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        position: absolute;
+        bottom: 0; left: 0; right: 0;
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+        padding-bottom: 15px; /* 适配 iPhone 底部黑条 */
+        border-top: 1px solid #F0F0F0;
+        z-index: 10;
+    }
+    .nav-item {
+        font-size: 16px;
+        color: #999;
+        font-weight: 500;
+        cursor: pointer;
+    }
+    .nav-item.active { color: #333; font-weight: bold; }
+    
+    /* 中间的加号按钮 */
+    .add-btn {
+        width: 46px;
+        height: 34px;
+        background-color: #FF2442;
+        color: white;
+        border-radius: 12px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 24px;
+        font-weight: 300;
+        box-shadow: 0 4px 10px rgba(255, 36, 66, 0.3);
+    }
+
+</style>
+</head>
+<body>
+
+<div class="app-container">
+    <!-- 顶部导航 -->
+    <header class="top-nav">
+        <div class="tab">关注</div>
+        <div class="tab active">发现</div>
+        <div class="tab">附近</div>
+    </header>
+
+    <!-- 瀑布流内容区 -->
+    <main class="feed-scroll">
+        <div class="masonry-grid">
+            <!-- 预加载的 6 张卡片 -->
+            <!-- 第 1-2 张 (完全露出) -->
+            <div class="card">
+                <div class="card-cover">📖 使用说明</div>
+                <div class="card-info"><span>📘</span> 使用说明</div>
+            </div>
+            <div class="card">
+                <div class="card-cover">👤 角色信息</div>
+                <div class="card-info"><span>👤</span> 角色信息</div>
+            </div>
+            <!-- 第 3-4 张 (完全露出) -->
+            <div class="card">
+                <div class="card-cover">OOTD 分享</div>
+                <div class="card-info"><span>👗</span> 春日穿搭</div>
+            </div>
+            <div class="card">
+                <div class="card-cover">探店打卡</div>
+                <div class="card-info"><span>☕️</span> 氛围感咖啡店</div>
+            </div>
+            <!-- 第 5-6 张 (露出头部一小半，引导滑动) -->
+            <div class="card">
+                <div class="card-cover">美妆教程</div>
+                <div class="card-info"><span>💄</span> 日常通勤妆</div>
+            </div>
+            <div class="card">
+                <div class="card-cover">数码开箱</div>
+                <div class="card-info"><span>💻</span> 桌面改造</div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 底部导航 -->
+    <nav class="bottom-nav">
+        <div class="nav-item active">首页</div>
+        <div class="nav-item">购物</div>
+        <div class="add-btn">+</div>
+        <div class="nav-item">消息</div>
+        <div class="nav-item">我</div>
+    </nav>
+</div>
+
+</body>
+</html>
